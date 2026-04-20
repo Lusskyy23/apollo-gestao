@@ -64,11 +64,19 @@ if menu == "Lançar Turno":
     
     turno = st.selectbox("Turno", ["08:00 as 17:00", "17:00 as 00:00", "00:00 as 02:00", "02:00 as 08:00"])
     
-    s_inicial = st.number_input("Saldo Inicial", min_value=0)
-    s_final = st.number_input("Saldo Final", min_value=0)
+    col1, col2 = st.columns(2)
+    with col1:
+        s_inicial = st.number_input("Saldo Inicial", min_value=0)
+    with col2:
+        s_final = st.number_input("Saldo Final", min_value=0)
+        
+    # --- NOVO CAMPO: Compras no meio do turno ---
+    compras_turno = st.number_input("Compras de Estoque NESTE turno (Moedas)", min_value=0, value=0, help="Deixe zero se não houve compras no meio deste turno.")
     
     if st.button("Salvar Turno"):
-        moedas = s_inicial - s_final
+        # A nova matemática inteligente
+        moedas = (s_inicial + compras_turno) - s_final
+        
         if moedas >= 0:
             valor_rs = moedas / TAXA_VENDA_REAL
             valor_rs_planilha = str(round(valor_rs, 2)).replace(".", ",")
@@ -79,12 +87,15 @@ if menu == "Lançar Turno":
             )
             st.success(f"Salvo! Venda de {moedas:,.0f} moedas ({formata_brl(valor_rs)})")
         else:
-            st.error("Saldo final maior que o inicial!")
+            st.error("Erro: O saldo final está maior do que deveria. Verifique se esqueceu de anotar alguma compra!")
 
 elif menu == "Compras e Fiados":
     st.header("💸 Compras e Dívidas")
+    
+    # --- AQUI ENTROU O NOVO CALENDÁRIO ---
+    data = st.date_input("Data do Registro", datetime.now()).strftime("%d/%m/%Y")
+    
     tipo = st.radio("Operação", ["Compra (Estoque)", "Fiado Normal", "Fiado ADM"])
-    data = datetime.now().strftime("%d/%m/%Y")
     
     if tipo == "Compra (Estoque)":
         usd = st.number_input("Valor em Dólar (USD)", min_value=0.0)
