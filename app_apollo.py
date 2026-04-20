@@ -40,7 +40,7 @@ try:
     aba_atual = get_ou_criar_aba(planilha)
     st.sidebar.success("✅ Conectado à Planilha")
 except Exception as e:
-    st.sidebar.error("❌ Erro ao conectar. Verifique o arquivo JSON e o nome da planilha.")
+    st.sidebar.error(f"❌ O Google disse: {e}")
     st.stop()
 
 menu = st.sidebar.selectbox("Menu", ["Lançar Turno", "Compras e Fiados", "Relatório Diário"])
