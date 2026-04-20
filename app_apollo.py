@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
 # --- CONFIGURAÇÕES DA APOLLO ---
@@ -10,7 +9,7 @@ TAXA_COMPRA_USD = 2500
 TAXA_ADM_USD = 2100
 NOME_PLANILHA = "Caixa Apollo" 
 
-# Função para formatar dinheiro no padrão Brasil (R$ 1.234,56)
+# Função para formatar dinheiro no padrão Brasil
 def formata_brl(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -31,6 +30,20 @@ def conectar_sheets():
     client = gspread.authorize(creds)
     return client.open(NOME_PLANILHA)
 
+# FUNÇÃO QUE HAVIA SUMIDO: Cria as abas dos meses
+def get_ou_criar_aba(planilha):
+    meses = ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", 
+             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    agora = datetime.now()
+    nome_aba = f"{meses[agora.month - 1]}_{agora.year}"
+    
+    try:
+        return planilha.worksheet(nome_aba)
+    except:
+        aba = planilha.add_worksheet(title=nome_aba, rows="1000", cols="10")
+        aba.append_row(["Data", "Tipo", "Turno", "Moedas", "Valor (R$)", "Valor (USD)", "Cliente/Obs"])
+        return aba
+
 # --- INTERFACE ---
 st.set_page_config(page_title="Apollo - Gestão de Moedas", page_icon="🪙")
 st.title("🪙 Apollo - Controle de Fluxo")
@@ -49,7 +62,6 @@ if menu == "Lançar Turno":
     st.header("📊 Fechamento de Turno")
     data = st.date_input("Data", datetime.now()).strftime("%d/%m/%Y")
     
-    # NOVOS TURNOS ADICIONADOS AQUI
     turno = st.selectbox("Turno", ["08:00 as 17:00", "17:00 as 00:00", "00:00 as 02:00", "02:00 as 08:00"])
     
     s_inicial = st.number_input("Saldo Inicial", min_value=0)
@@ -111,9 +123,6 @@ elif menu == "Relatório Diário":
         dia_filtrado = dados[dados['Data'] == data_sel]
         vendas = dia_filtrado[dia_filtrado['Tipo'] == 'Venda Turno'].copy()
         
-        # CÁLCULO À PROVA DE FALHAS:
-        # Usa apenas a quantidade de moedas (que nunca falha) para calcular o Real na hora
-        # e ignora o que o Google Sheets acha que é o valor em R$.
         vendas['Moedas'] = pd.to_numeric(vendas['Moedas'], errors='coerce').fillna(0)
         total_m = vendas['Moedas'].sum()
         total_rs_calculado = total_m / TAXA_VENDA_REAL
@@ -125,7 +134,6 @@ elif menu == "Relatório Diário":
         st.write("---")
         st.write("**Detalhamento de Turnos:**")
         
-        # Recalcula a linha de cada turno para exibir bonito na tabela
         vendas_exibicao = vendas[['Turno', 'Moedas']].copy()
         vendas_exibicao['Valor (R$)'] = (vendas_exibicao['Moedas'] / TAXA_VENDA_REAL).apply(formata_brl)
         st.table(vendas_exibicao)
